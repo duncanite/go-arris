@@ -1,11 +1,14 @@
 package sb8200
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -40,10 +43,66 @@ func Fingerprint(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// PeerFingerprint connects to the modem at baseURL without verifying its
+// certificate and returns the fingerprint of the one it presents, for
+// HTTPClient to pin.
+func PeerFingerprint(ctx context.Context, baseURL string, timeout time.Duration) (string, error) {
+	target, err := url.Parse(baseURL)
+	if err != nil || target.Host == "" {
+		return "", fmt.Errorf("%w: %q", ErrURL, baseURL)
+	}
+
+	host := target.Host
+	if target.Port() == "" {
+		host = net.JoinHostPort(target.Hostname(), "443")
+	}
+
+	config, err := tlsConfigFor("", true)
+	if err != nil {
+		return "", err
+	}
+
+	dialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: timeout}, Config: config}
+
+	conn, err := dialer.DialContext(ctx, "tcp", host)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", host, err)
+	}
+
+	defer func() { _ = conn.Close() }()
+
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok || len(tlsConn.ConnectionState().PeerCertificates) == 0 {
+		return "", fmt.Errorf("%w: %s presented no certificate", ErrFingerprint, host)
+	}
+
+	return Fingerprint(tlsConn.ConnectionState().PeerCertificates[0].Raw), nil
+}
+
+// cipherSuites is Go's default list with the one the modem takes added.
+// The modem's server does TLS 1.2 with RSA key exchange only and picks
+// TLS_RSA_WITH_AES_256_GCM_SHA384, which Go no longer offers by default
+// since it gives no forward secrecy; without it the handshake fails. Its
+// place in this list means nothing: crypto/tls ignores the order and
+// ranks RSA key exchange below every ECDHE suite itself, so a server
+// that can do better does.
+func cipherSuites() []uint16 {
+	var suites []uint16
+
+	for _, suite := range tls.CipherSuites() {
+		suites = append(suites, suite.ID)
+	}
+
+	return append(suites, tls.TLS_RSA_WITH_AES_256_GCM_SHA384)
+}
+
 // tlsConfigFor verifies the modem's certificate by its fingerprint when
 // one is given, by the system roots otherwise; insecure verifies nothing.
 func tlsConfigFor(fingerprint string, insecure bool) (*tls.Config, error) {
-	config := &tls.Config{MinVersion: tls.VersionTLS12}
+	config := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		CipherSuites: cipherSuites(), // #nosec G402 -- the modem speaks RSA key exchange and nothing else
+	}
 
 	if insecure {
 		config.InsecureSkipVerify = true // #nosec G402 -- the caller asked for it, for the run that reads the fingerprint

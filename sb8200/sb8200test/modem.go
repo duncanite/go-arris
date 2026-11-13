@@ -5,13 +5,15 @@
 // Basic authorization header, a token in answer, the token expected
 // back as the "credential" cookie; the login page, with a 200, for a
 // refused login, a page asked without the cookie, and any path the
-// modem does not know. A password change is a POST of the new
+// modem does not know. Its TLS is the modem's: 1.2, RSA key exchange
+// only, which a client on Go's default cipher suites cannot join. A password change is a POST of the new
 // credential as the query string, which also ends the session.
 package sb8200test
 
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"embed"
 	"encoding/base64"
 	"encoding/hex"
@@ -56,7 +58,13 @@ type Modem struct {
 // New starts a modem with the default credentials.
 func New() *Modem {
 	modem := &Modem{password: Password, pages: map[string]string{}}
-	modem.server = httptest.NewTLSServer(http.HandlerFunc(modem.serve))
+	modem.server = httptest.NewUnstartedServer(http.HandlerFunc(modem.serve))
+	modem.server.TLS = &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		MaxVersion:   tls.VersionTLS12,
+		CipherSuites: []uint16{tls.TLS_RSA_WITH_AES_256_GCM_SHA384}, // #nosec G402 -- what the modem offers
+	}
+	modem.server.StartTLS()
 
 	return modem
 }

@@ -55,6 +55,14 @@ reads, and it changes the password; the modem offers nothing else to change.
   are disabled and the reboot button is commented out of the markup. The module does
   not post to a form the page does not show. Link aggregation has a page and an apply
   button; it reboots the modem and was left alone as out of scope.
+- **The modem's cipher suite, added to Go's.** The modem does RSA key exchange and
+  nothing else, which Go dropped from its defaults for want of forward secrecy.
+  `HTTPClient` offers Go's default suites and `TLS_RSA_WITH_AES_256_GCM_SHA384`, the one
+  the modem was seen to take. Go's TLS ranks the suites itself, RSA key exchange below
+  every ECDHE one whatever order they are given in, so the weaker exchange is used only
+  with a server that has nothing better; a test against a server on Go's defaults checks
+  it. The test modem speaks only the modem's suite, so a client without it fails every
+  test.
 - **The certificate is pinned.** The modem's certificate is self-signed and the system
   roots refuse it. `fingerprint` reads it once; `ARRIS_TLS_FINGERPRINT` pins it from
   then on; `--insecure` is for that first run and nothing else.
