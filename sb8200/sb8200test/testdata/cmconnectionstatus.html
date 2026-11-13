@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Status</title>
+<script src="jquery-1.7.1.min.js"></script>
+<script src="json2.js"></script>
+<script src="main_arris.js"></script>
+
+<script>
+$(document).ready(function(){
+        $("#htmlheader").load("htmlheader.htm");
+});
+</script>
+</head>
+
+<body>
+<div id="htmlheader"></div>
+          <!-- Header Area Begin -->
+<div class="header">
+
+<script>
+$(document).ready(function(){
+        $("#pageheaderA").load("pageheaderA.htm");
+});
+</script>
+
+         <div id="binnacleWrapper1" class="binnacleItems_hide" style="display:none;">
+            <div id="binnacleWrapper2" class="binnacleItems_hide" style="display:none;">
+                <div id="binnacleWrapperLeft"><img src="px1_Ux.png" alt="" class="binnacleWrapperShim"></div>
+                <div id="binnacleWrapperRight"><img src="px1_Ux.png" alt="" class="binnacleWrapperShim"></div>
+                <div id="binnacleWrapperMiddle">
+                    <div id="binnacleInnards">
+                            <div id="binnacleIndicatorWrap"></div>
+                    <div id="binnacleModelName"><span id="thisModelNumberIs">SB8200</span></div>
+                    </div>
+                </div>
+            <!-- end binnacleWrapper1/2 -->
+            </div>
+        </div>
+
+<div id="pageheaderA"></div>
+
+<!--gap--><div id="tmtg"><div class="gap1"><div class="gap2"><div class="gap3"><div class="gap4"></div></div></div></div></div>
+
+                <div id="tmg1"><div id="tmg2"><div id="tmg3"><div id="tmg4"><div id="tmg5"><div id="tmg6">
+
+<div id="topMenu"></div>
+
+<!-- START pageheaderB.htm ADDITIONS -->
+                <!-- end divs for tmg -->
+                </div></div></div></div></div></div>
+
+                <!--gap--><div id="tmbg"><div class="gap1"><div class="gap2"><div class="gap3"><div class="gap4"></div></div></div></div></div>
+
+                <div id="bg1"><div id="bg2"><div id="bg3"><div id="bg4">
+<!-- END pageheaderB.htm ADDITIONS -->
+
+</div>
+        <!-- End Header -->
+
+        <div class="container">
+                <div class="subHeader">
+                        <div class="subHeadcontent">Connection</div>
+                </div>
+        <div class="breadcrumbs">
+        <a href="cmconnectionstatus.html">Status</a>Connection </div>
+
+        <div class="content">
+        <div class="introText">
+                <p>The status listed show the connection state of the cable modem. They are used by your service provider to evaluate the operation of the cable modem.</p>
+        </div>
+
+
+                <!--form action=/goform/cmconnectionstatus method="post" name="cmconnectionstatus"-->
+<!--% GetRgCfgValue("IpProvMode"); %-->
+<!--% GetRgCfgValue("ApplyRgConnectAction"); %-->
+
+
+                        <center>
+                        <table class="simpleTable">
+
+                        <tr>
+                <th colspan="3">Startup Procedure</strong></th>
+            </tr>
+
+                        <tr >
+                <td width="44%" ><strong><u>Procedure</u></strong></td>
+                        <td width="31%" ><strong><u>Status</u></strong></td>
+                <td width="25%" ><strong><u>Comment</u></strong></td>
+                        </tr>
+
+                        <tr>
+                <td>Acquire Downstream Channel</td>
+                        <td>789000000 Hz</td>
+                        <td>Locked</td>
+                        </tr>
+
+                        <tr>
+                <td>Connectivity State</td>
+                        <td>OK</td>
+                        <td>Operational</td>
+                        </tr>
+
+                        <tr>
+                <td>Boot State</td>
+                        <td>OK</td>
+                        <td>Operational</td>
+                        </tr>
+
+                        <!--% GetRgCfgValue("CmProcedureTable"); %-->
+                        <tr>
+                <td >Configuration File</td>
+                        <td>OK</td>
+                        <td><!--%ejGetOther(cmInfo, ConfigurationComment)%--></td>
+                        </tr>
+                        <tr>
+                <td >Security</td>
+                        <td>Enabled</td>
+                        <td>BPI+</td>
+                        </tr>
+
+                        <tr>
+                <td >DOCSIS Network Access Enabled</td>
+                                <td>Allowed</td>
+                                <td></td>
+                        </tr>
+                </table>
+        </center>
+
+        <br clear="all" class="clearfloat">
+                <div class="spacer30"></div>
+
+<center>
+   <table class='simpleTable'>
+<tr><th colspan=8><strong>Downstream Bonded Channels</strong></th></tr>
+      <td><strong>Channel ID</strong></td>
+      <td><strong>Lock Status</strong></td>
+      <td><strong>Modulation</strong></td>
+      <td><strong>Frequency</strong></td>
+      <td><strong>Power</strong></td>
+      <td><strong>SNR/MER</strong></td>
+      <td><strong>Corrected</strong></td>
+      <td><strong>Uncorrectables</strong></td>
+   </tr>
+   <tr align='left'>
+      <td>27</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>789000000 Hz</td>
+      <td>1.9 dBmV</td>
+      <td>40.6 dB</td>
+      <td>454</td>
+      <td>1202</td>
+   </tr>
+   <tr align='left'>
+      <td>1</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>633000000 Hz</td>
+      <td>0.8 dBmV</td>
+      <td>40.1 dB</td>
+      <td>514</td>
+      <td>1650</td>
+   </tr>
+   <tr align='left'>
+      <td>2</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>639000000 Hz</td>
+      <td>0.5 dBmV</td>
+      <td>40.4 dB</td>
+      <td>553</td>
+      <td>1648</td>
+   </tr>
+   <tr align='left'>
+      <td>3</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>645000000 Hz</td>
+      <td>1.0 dBmV</td>
+      <td>39.9 dB</td>
+      <td>496</td>
+      <td>1577</td>
+   </tr>
+   <tr align='left'>
+      <td>4</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>651000000 Hz</td>
+      <td>0.5 dBmV</td>
+      <td>39.2 dB</td>
+      <td>551</td>
+      <td>1421</td>
+   </tr>
+   <tr align='left'>
+      <td>5</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>657000000 Hz</td>
+      <td>0.6 dBmV</td>
+      <td>39.6 dB</td>
+      <td>536</td>
+      <td>1319</td>
+   </tr>
+   <tr align='left'>
+      <td>6</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>663000000 Hz</td>
+      <td>0.2 dBmV</td>
+      <td>38.0 dB</td>
+      <td>522</td>
+      <td>1516</td>
+   </tr>
+   <tr align='left'>
+      <td>7</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>669000000 Hz</td>
+      <td>0.8 dBmV</td>
+      <td>39.1 dB</td>
+      <td>460</td>
+      <td>1619</td>
+   </tr>
+   <tr align='left'>
+      <td>8</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>675000000 Hz</td>
+      <td>0.9 dBmV</td>
+      <td>39.0 dB</td>
+      <td>524</td>
+      <td>1675</td>
+   </tr>
+   <tr align='left'>
+      <td>9</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>681000000 Hz</td>
+      <td>1.2 dBmV</td>
+      <td>38.8 dB</td>
+      <td>498</td>
+      <td>1602</td>
+   </tr>
+   <tr align='left'>
+      <td>10</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>687000000 Hz</td>
+      <td>0.9 dBmV</td>
+      <td>40.6 dB</td>
+      <td>510</td>
+      <td>1376</td>
+   </tr>
+   <tr align='left'>
+      <td>11</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>693000000 Hz</td>
+      <td>0.8 dBmV</td>
+      <td>39.8 dB</td>
+      <td>532</td>
+      <td>1269</td>
+   </tr>
+   <tr align='left'>
+      <td>12</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>699000000 Hz</td>
+      <td>0.3 dBmV</td>
+      <td>40.7 dB</td>
+      <td>485</td>
+      <td>1469</td>
+   </tr>
+   <tr align='left'>
+      <td>13</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>705000000 Hz</td>
+      <td>0.3 dBmV</td>
+      <td>40.4 dB</td>
+      <td>478</td>
+      <td>1597</td>
+   </tr>
+   <tr align='left'>
+      <td>14</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>711000000 Hz</td>
+      <td>0.4 dBmV</td>
+      <td>40.6 dB</td>
+      <td>513</td>
+      <td>1555</td>
+   </tr>
+   <tr align='left'>
+      <td>15</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>717000000 Hz</td>
+      <td>1.1 dBmV</td>
+      <td>40.7 dB</td>
+      <td>542</td>
+      <td>1379</td>
+   </tr>
+   <tr align='left'>
+      <td>16</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>723000000 Hz</td>
+      <td>1.6 dBmV</td>
+      <td>40.1 dB</td>
+      <td>496</td>
+      <td>1325</td>
+   </tr>
+   <tr align='left'>
+      <td>17</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>729000000 Hz</td>
+      <td>1.7 dBmV</td>
+      <td>40.4 dB</td>
+      <td>537</td>
+      <td>1352</td>
+   </tr>
+   <tr align='left'>
+      <td>18</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>735000000 Hz</td>
+      <td>1.3 dBmV</td>
+      <td>38.9 dB</td>
+      <td>500</td>
+      <td>1400</td>
+   </tr>
+   <tr align='left'>
+      <td>19</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>741000000 Hz</td>
+      <td>1.1 dBmV</td>
+      <td>39.2 dB</td>
+      <td>514</td>
+      <td>1385</td>
+   </tr>
+   <tr align='left'>
+      <td>20</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>747000000 Hz</td>
+      <td>1.1 dBmV</td>
+      <td>38.4 dB</td>
+      <td>507</td>
+      <td>1361</td>
+   </tr>
+   <tr align='left'>
+      <td>21</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>753000000 Hz</td>
+      <td>1.4 dBmV</td>
+      <td>39.0 dB</td>
+      <td>534</td>
+      <td>1352</td>
+   </tr>
+   <tr align='left'>
+      <td>22</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>759000000 Hz</td>
+      <td>1.7 dBmV</td>
+      <td>38.3 dB</td>
+      <td>487</td>
+      <td>1377</td>
+   </tr>
+   <tr align='left'>
+      <td>23</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>765000000 Hz</td>
+      <td>1.9 dBmV</td>
+      <td>40.5 dB</td>
+      <td>523</td>
+      <td>1385</td>
+   </tr>
+   <tr align='left'>
+      <td>24</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>771000000 Hz</td>
+      <td>2.3 dBmV</td>
+      <td>39.0 dB</td>
+      <td>477</td>
+      <td>1373</td>
+   </tr>
+   <tr align='left'>
+      <td>25</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>777000000 Hz</td>
+      <td>2.0 dBmV</td>
+      <td>40.7 dB</td>
+      <td>579</td>
+      <td>1289</td>
+   </tr>
+   <tr align='left'>
+      <td>26</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>783000000 Hz</td>
+      <td>2.0 dBmV</td>
+      <td>39.9 dB</td>
+      <td>443</td>
+      <td>1234</td>
+   </tr>
+   <tr align='left'>
+      <td>28</td>
+      <td>Locked</td>
+      <td>QAM256</td>
+      <td>795000000 Hz</td>
+      <td>1.8 dBmV</td>
+      <td>40.7 dB</td>
+      <td>433</td>
+      <td>1219</td>
+   </tr>
+   <tr align='left'>
+      <td>33</td>
+      <td>Locked</td>
+      <td>Other</td>
+      <td>402000000 Hz</td>
+      <td>5.1 dBmV</td>
+      <td>41.8 dB</td>
+      <td>2317957349</td>
+      <td>4326</td>
+   </tr>
+</table><br><br>
+
+</center>
+
+<br clear="all" class="clearfloat">
+<div class="spacer30"></div>
+
+<center>
+   <table class='simpleTable'>
+<tr><th colspan=7><strong>Upstream Bonded Channels</strong></th></tr>
+      <td><strong>Channel</strong></td>
+      <td><strong>Channel ID</strong></td>
+      <td><strong>Lock Status</strong></td>
+      <td><strong>US Channel Type</td>
+      <td><strong>Frequency</strong></td>
+      <td><strong>Width</strong></td>
+      <td><strong>Power</strong></td>
+   </tr>
+   <tr align='left'>
+      <td>1</td>
+      <td>1</td>
+      <td>Locked</td>
+      <td>SC-QAM Upstream</td>
+      <td>30400000 Hz</td>
+      <td>6400000 Hz</td>
+      <td>35.0 dBmV</td>
+   </tr>
+   <tr align='left'>
+      <td>2</td>
+      <td>2</td>
+      <td>Locked</td>
+      <td>SC-QAM Upstream</td>
+      <td>36800000 Hz</td>
+      <td>6400000 Hz</td>
+      <td>36.0 dBmV</td>
+   </tr>
+   <tr align='left'>
+      <td>3</td>
+      <td>3</td>
+      <td>Locked</td>
+      <td>OFDM Upstream</td>
+      <td>4600000 Hz</td>
+      <td>16200000 Hz</td>
+      <td>28.0 dBmV</td>
+   </tr>
+</table><br><br>
+
+</center>
+
+<br clear="all" class="clearfloat">
+<div class="spacer30"></div>
+
+<p id="systime" align="center"><strong>Current System Time:</strong> Thu Nov 12 19:32:59 2026
+</p>
+
+</div>
+
+
+<!--/form-->
+
+
+<br clear="all" class="clearfloat">
+<div class="spacer40"></div>
+
+<!-- end .container --></div>
+
+<!-- Footer and Sitemap -->
+<!-- end divs for bc -->
+</div></div></div></div>
+<!--gap--><div id="bmtg"><div class="gap1"><div class="gap2"><div class="gap3"><div class="gap4"></div></div></div></div></div>
+
+<center><div id="siteMapBottom"></div></center>
+<script>
+$(document).ready(function(){
+        $("#footer").load("footer.htm");
+});
+</script>
+<div id="footer"></div>
+
+</body>
+</html>

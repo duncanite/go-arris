@@ -1,0 +1,7 @@
+# This repository's additions to the canonical link checks in .limen/lychee.toml;
+# the `security links` recipe passes both.
+
+# The pages under testdata are captured from the modem, as it served them: their
+# links are the modem's own, root-relative forms and the vendor's site, and
+# nothing the project maintains.
+exclude_path = ["sb8200/sb8200test/testdata"]
