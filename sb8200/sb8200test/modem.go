@@ -51,6 +51,7 @@ type Modem struct {
 	password     string
 	token        string
 	locked       bool
+	drop         bool
 	keepPassword bool
 	logins       int
 	logouts      int
@@ -90,6 +91,15 @@ func (m *Modem) SetPage(name, body string) {
 	defer m.mu.Unlock()
 
 	m.pages[name] = body
+}
+
+// Drop makes the modem hang up on a login and on a password change, the
+// two requests whose query is a credential, without answering.
+func (m *Modem) Drop() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.drop = true
 }
 
 // Lock makes the modem answer every login with its login page and
@@ -148,7 +158,11 @@ func (m *Modem) serve(writer http.ResponseWriter, request *http.Request) {
 
 	name := strings.TrimPrefix(request.URL.Path, "/")
 
+	credential := request.URL.RawQuery != "" && (name == statusPage || name == changePage)
+
 	switch {
+	case m.drop && credential:
+		hangUp(writer)
 	case name == logoutPage:
 		m.token = ""
 		m.logouts++
@@ -263,4 +277,19 @@ func (m *Modem) loginPage(writer http.ResponseWriter) {
 func (*Modem) write(writer http.ResponseWriter, body string) {
 	writer.Header().Set("Content-Type", "text/html")
 	_, _ = writer.Write([]byte(body)) // #nosec G705 -- a test fake serving its fixtures
+}
+
+// hangUp closes the connection under the request, unanswered.
+func hangUp(writer http.ResponseWriter) {
+	hijacker, ok := writer.(http.Hijacker)
+	if !ok {
+		return
+	}
+
+	conn, _, err := hijacker.Hijack()
+	if err != nil {
+		return
+	}
+
+	_ = conn.Close()
 }
