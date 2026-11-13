@@ -46,13 +46,14 @@ const (
 type Modem struct {
 	server *httptest.Server
 
-	mu       sync.Mutex
-	pages    map[string]string
-	password string
-	token    string
-	locked   bool
-	logins   int
-	logouts  int
+	mu           sync.Mutex
+	pages        map[string]string
+	password     string
+	token        string
+	locked       bool
+	keepPassword bool
+	logins       int
+	logouts      int
 }
 
 // New starts a modem with the default credentials.
@@ -98,6 +99,15 @@ func (m *Modem) Lock() {
 	defer m.mu.Unlock()
 
 	m.locked = true
+}
+
+// KeepPassword makes the modem answer a password change as it answers
+// one it takes, and keep its password.
+func (m *Modem) KeepPassword() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.keepPassword = true
 }
 
 // CurrentPassword is the password a login takes now.
@@ -201,8 +211,14 @@ func (m *Modem) changePassword(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
-	m.password = password
+	if !m.keepPassword {
+		m.password = password
+	}
+
 	m.token = ""
+
+	// The modem was seen to answer a change it took with its login page.
+	m.loginPage(writer)
 }
 
 // page serves a captured page under the session's cookie, the login

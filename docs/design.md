@@ -47,10 +47,11 @@ reads, and it changes the password; the modem offers nothing else to change.
   never arguments: an argument is in the process list and the shell history. The page's
   protocol then puts the credential in a query string, which is the page's design and
   is said in the protocol document.
-- **The change is proven, not assumed.** The modem answers nothing readable to the
-  password post. `password` logs in with the new password after the change, and says
-  so; a failure there is reported as the modem having taken the change and refused the
-  login, which is what the person needs to know.
+- **The change is proven, not assumed.** The modem was seen to answer a change it took
+  with its login page, which elsewhere means a lost session, so the answer is not read. `password`
+  logs in with the new password after the change, and says so; a failure there says
+  that login failed and to try both passwords in the page, since which one holds is
+  then unknown.
 - **No reboot, no configuration.** On the firmware seen, the configuration page's fields
   are disabled and the reboot button is commented out of the markup. The module does
   not post to a form the page does not show. Link aggregation has a page and an apply

@@ -33,7 +33,7 @@ const passwordVar = "ARRIS_PASSWORD" // #nosec G101 -- the variable's name, not 
 
 const newPasswordVar = "ARRIS_NEW_PASSWORD" // #nosec G101 -- the variable's name, not a credential
 
-var errVerify = errors.New("the modem took the new password, and refused a login with it")
+var errVerify = errors.New("a login with the new password failed; try both passwords in the page before anything else")
 
 // exitStatus is how the parser's own exit, on --help, leaves Run: kong
 // calls its exit function and goes on, so the function panics with the
