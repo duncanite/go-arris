@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -152,62 +151,8 @@ func (*statusCommand) Run(ctx context.Context, root *rootCommand) error {
 			return err
 		}
 
-		root.printStatus(status)
-
-		return nil
+		return status.Write(root.out)
 	})
-}
-
-func (root *rootCommand) printStatus(status *sb8200.Status) {
-	// A table per section: one tabwriter would align the startup steps'
-	// columns with the channels'.
-	table := root.table()
-
-	fmt.Fprintln(table, "Startup")
-
-	for _, step := range status.Startup {
-		fmt.Fprintf(table, "  %s\t%s\t%s\n", step.Procedure, step.Status, step.Comment)
-	}
-
-	_ = table.Flush()
-	table = root.table()
-
-	fmt.Fprintf(table, "\nDownstream (%d channels)\n", len(status.Downstream))
-	fmt.Fprintln(table, "  ID\tLock\tModulation\tFrequency\tPower\tSNR/MER\tCorrected\tUncorrectable")
-
-	for _, channel := range status.Downstream {
-		fmt.Fprintf(table, "  %d\t%s\t%s\t%d Hz\t%.1f dBmV\t%.1f dB\t%d\t%d\n",
-			channel.ID, lock(channel.Locked), channel.Modulation, channel.Frequency,
-			channel.Power, channel.SNR, channel.Corrected, channel.Uncorrectable)
-	}
-
-	_ = table.Flush()
-	table = root.table()
-
-	fmt.Fprintf(table, "\nUpstream (%d channels)\n", len(status.Upstream))
-	fmt.Fprintln(table, "  Channel\tID\tLock\tType\tFrequency\tWidth\tPower")
-
-	for _, channel := range status.Upstream {
-		fmt.Fprintf(table, "  %d\t%d\t%s\t%s\t%d Hz\t%d Hz\t%.1f dBmV\n",
-			channel.Channel, channel.ID, lock(channel.Locked), channel.Type,
-			channel.Frequency, channel.Width, channel.Power)
-	}
-
-	_ = table.Flush()
-
-	fmt.Fprintf(root.out, "\nSystem time: %s, by the modem's clock\n", status.SystemTime.Format(time.DateTime))
-}
-
-func (root *rootCommand) table() *tabwriter.Writer {
-	return tabwriter.NewWriter(root.out, 0, 0, 2, ' ', 0)
-}
-
-func lock(locked bool) string {
-	if locked {
-		return "locked"
-	}
-
-	return "not locked"
 }
 
 func (*infoCommand) Run(ctx context.Context, root *rootCommand) error {
@@ -217,15 +162,7 @@ func (*infoCommand) Run(ctx context.Context, root *rootCommand) error {
 			return err
 		}
 
-		table := root.table()
-		fmt.Fprintf(table, "Specification:\t%s\n", info.Specification)
-		fmt.Fprintf(table, "Hardware:\t%s\n", info.Hardware)
-		fmt.Fprintf(table, "Software:\t%s\n", info.Software)
-		fmt.Fprintf(table, "MAC:\t%s\n", info.MAC)
-		fmt.Fprintf(table, "Serial:\t%s\n", info.Serial)
-		fmt.Fprintf(table, "Uptime:\t%s\n", info.Uptime)
-
-		return table.Flush()
+		return info.Write(root.out)
 	})
 }
 
@@ -236,14 +173,7 @@ func (*logCommand) Run(ctx context.Context, root *rootCommand) error {
 			return err
 		}
 
-		table := root.table()
-
-		for _, event := range events {
-			fmt.Fprintf(table, "%s\t%d\t%d\t%s\n",
-				event.Time.Format("2006-01-02 15:04"), event.ID, event.Level, event.Text)
-		}
-
-		return table.Flush()
+		return sb8200.WriteLog(root.out, events)
 	})
 }
 

@@ -163,9 +163,9 @@ func (s *Session) Log(ctx context.Context) ([]Event, error) {
 // session's cookie. The modem was seen to answer a change it took with
 // its login page, the page that elsewhere means the session is gone, so
 // the answer is not read and a nil error is not proof: the only proof of
-// the change is a Login with the new password. The page logs out at once, and so does
-// this. CheckPassword is applied first; the modem's own check is in its
-// page's script, not behind it.
+// the change is a Login with the new password. The page logs out at
+// once, and so does this. CheckPassword is applied first; the modem's own
+// check is in its page's script, not behind it.
 func (s *Session) ChangePassword(ctx context.Context, password string) error {
 	if err := CheckPassword(password); err != nil {
 		return err
