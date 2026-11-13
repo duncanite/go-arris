@@ -7,7 +7,9 @@ reads, and it changes the password; the modem offers nothing else to change.
 ## Shape
 
 - `sb8200`: `Login` is the page's login, and returns a `Session`; `Status`, `Info` and
-  `Log` are the three pages the modem fills in, parsed into typed values; `ChangePassword`
+  `Log` are the three pages the modem fills in, parsed into typed values, each with a
+  `Write` that prints it as a person reads it, so any command over the library prints
+  the same; `ChangePassword`
   is the page's one write, after `CheckPassword`, the page's own rule; `Logout` ends the
   session. `HTTPClient` is the client `Login` takes, with the modem's self-signed
   certificate pinned by fingerprint, or accepted blind for the run that reads the
@@ -48,10 +50,10 @@ reads, and it changes the password; the modem offers nothing else to change.
   protocol then puts the credential in a query string, which is the page's design and
   is said in the protocol document.
 - **The change is proven, not assumed.** The modem was seen to answer a change it took
-  with its login page, which elsewhere means a lost session, so the answer is not read. `password`
-  logs in with the new password after the change, and says so; a failure there says
-  that login failed and to try both passwords in the page, since which one holds is
-  then unknown.
+  with its login page, which elsewhere means a lost session, so the answer is not read.
+  `password` logs in with the new password after the change, and says so; a failure
+  there says that login failed and to try both passwords in the page, since which one
+  holds is then unknown.
 - **No reboot, no configuration.** On the firmware seen, the configuration page's fields
   are disabled and the reboot button is commented out of the markup. The module does
   not post to a form the page does not show. Link aggregation has a page and an apply
