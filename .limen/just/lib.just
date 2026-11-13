@@ -1,0 +1,201 @@
+# DO NOT EDIT MANUALLY.
+# This file provides shared tasks common to all projects and managed by limen.
+# Project recipes live in the root .justfile, below the shared-baseline import.
+
+# Per-recipe banner, imported (a `mod` cannot be depended on). Depended on WITH
+# arguments so plain and shebang recipes print it identically.
+_banner mod name:
+    @echo "▶ {{ mod }}: {{ name }}"
+
+# go_cgo: "does THIS project build with cgo?", shared by build, test and the
+# per-platform legs.
+#
+# It is a SHELL expansion, not a just value, on purpose: a child module cannot
+# see its parent's variables and env() reads just's process environment, so
+# `export CGO_ENABLED := env('CGO_ENABLED', '0')` here would silently discard a
+# project's GO_CGO.
+#
+# Precedence: CGO_ENABLED on the invocation, then the project's GO_CGO, then
+# off — go's own default is cgo on wherever a C toolchain happens to exist.
+go_cgo := '${CGO_ENABLED:-${GO_CGO:-0}}'
+
+# Inside a Claude Code session the installer sets LIMEN_AGENT_HOME, the home of
+# the sessions' tool root: slsa-verifier keeps its TUF cache under
+# $HOME/.sigstore and reads no other variable (book/upstream.md), and the
+# sandbox denies the human's. Prefixed on every hermetic command that downloads
+# and verifies: install, and update-checksum, which verifies what it sums.
+# Through env, because a word an expansion produces is never an assignment to
+# the shell (`HOME=x hermetic` typed is one; `${v:+HOME=x} hermetic` runs a
+# command named HOME=x). For a human the variable is unset and this is a bare env.
+agent_home := 'env ${LIMEN_AGENT_HOME:+HOME="$LIMEN_AGENT_HOME"}'
+
+# Run CMD once per supported platform — every GOOS/GOARCH pair in the canonical
+# checksum.supported_envs of .hermetic/hermetic.yaml (the list below mirrors it; extend them
+# together) — with CGO disabled. The Go build graph is selected by both axes:
+# a file built only on linux is invisible to a darwin run, and a file built
+# only on amd64 (an _amd64.go, an _amd64.s) is invisible to an arm64 one, so a
+# GOOS-only loop at the host's architecture silently skips half the matrix.
+# CGO would prevent exactly this — loading packages for a foreign platform
+# needs that platform's C toolchain — so a project that genuinely needs cgo
+# declares it (`export GO_CGO := '1'`, or CGO_ENABLED=1 for one invocation)
+# and gets one native run only: reduced coverage, announced loudly.
+_per-platform +cmd:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ go_cgo }}" = "1" ]; then
+        echo "CGO_ENABLED=1: cross-platform runs are impossible (foreign-platform package" >&2
+        echo "loading needs that platform's C toolchain) — native platform only." >&2
+        {{ cmd }}
+    else
+        platforms=(darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64)
+        for platform in "${platforms[@]}"; do
+            echo "→ GOOS=${platform%/*} GOARCH=${platform#*/}"
+            # Exported, not prefixed: a prefix binds to a simple command alone,
+            # and a leg's command may be a loop over modules. The recipe is its
+            # own process, so nothing outlives the loop.
+            export CGO_ENABLED=0 GOOS="${platform%/*}" GOARCH="${platform#*/}"
+            {{ cmd }}
+        done
+    fi
+
+# The Go modules the Go lanes analyze, built into the array `modules` by this
+# statement: the root, then every command that is a module of its own
+# (cmd/<name>/go.mod, the shape build-go.just builds from inside). A tool
+# module under .limen/tools/ is not project code and is not on it. For a
+# command a lane hands _per-platform; a recipe body writes the statement
+# out instead, since the shell lane lints a body with its interpolations
+# opaque and must see the assignment the loop reads.
+go_modules_init := 'modules=(.); for d in cmd/*/; do [ -f "${d}go.mod" ] || continue; modules+=("${d%/}"); done'
+
+# The rendered golangci configuration of the module `$module` names in such a
+# loop: the root's at golangci.yml, as before; a command's beside it by name.
+golangci_config := '"$LIMEN_BUILD/golangci$([ "$module" = . ] || echo "-${module##*/}").yml"'
+
+# The native build of one .limen/tools/go.mod tool into .build/tools/, shared by
+# _go-tool and the tools recipes (`{{ go_tool_build }} <pkg>`). GOOS/GOARCH
+# cleared: a per-platform leg would cross-compile the tool itself (exec format
+# error). Directory form of -o: go names the binary itself, which on windows
+# means the .exe suffix the loader needs — git-bash then resolves the bare
+# .build/tools/<name> the recipes call to it. (go strips a /vN major suffix
+# when naming, so a directive ending in /v2 lands under the element before it.)
+# -o is resolved relative to -C. CGO_ENABLED=0 throughout the tool builds:
+# the tools are pure Go, and with cgo on by default wherever a C compiler
+# exists, `net` alone would call one to build them.
+go_tool_build := 'mkdir -p "$LIMEN_BUILD/tools" && GOOS="" GOARCH="" CGO_ENABLED=0 go -C .limen/tools build -o "$LIMEN_BUILD/tools/"'
+
+# cargo through the pinned rustup, never ~/.cargo/bin (book/rust.md). The
+# pin is rust-lang/rustup in the project's .hermetic/hermetic.yaml, which
+# links rustup-init; the first lane installs rustup from it under
+# $LIMEN_BUILD with no toolchain, and the toolchain is rust-toolchain.toml's,
+# fetched by the first cargo call and verified against the release manifest.
+# Windows: rustup wants native paths for its two homes, hence cygpath, and
+# hermetic's link resolves rustup-init to the .exe. Injected as a just
+# variable: module recipes cannot share shell functions. Every Rust lane
+# passes vacuously without a Cargo.toml, so a module can sit in a default.
+rust_env := '''
+    export RUSTUP_HOME="$LIMEN_BUILD/rustup" CARGO_HOME="$LIMEN_BUILD/cargo"
+    if command -v cygpath >/dev/null 2>&1; then
+        RUSTUP_HOME="$(cygpath -m "$RUSTUP_HOME")"; CARGO_HOME="$(cygpath -m "$CARGO_HOME")"
+    fi
+    export RUSTUP_INIT_SKIP_PATH_CHECK=yes
+    if [ ! -f rust-toolchain.toml ]; then
+        echo "rust-toolchain.toml is missing: the toolchain is pinned there, an exact version with its components and targets (book/rust.md)." >&2
+        exit 1
+    fi
+    if [ ! -x "$LIMEN_BUILD/cargo/bin/cargo" ] && [ ! -x "$LIMEN_BUILD/cargo/bin/cargo.exe" ]; then
+        if ! command -v rustup-init >/dev/null 2>&1; then
+            echo "rustup-init is not on the hermetic PATH: pin rust-lang/rustup in .hermetic/hermetic.yaml (just do tools add local,rust-lang/rustup <version>, book/rust.md)." >&2
+            exit 1
+        fi
+        # stdout is rustup-init's welcome ("Rust is installed now. Great!", the
+        # PATH advice): nothing a lane reports; its errors stay on stderr.
+        rustup-init -y -q --no-modify-path --no-update-default-toolchain --default-toolchain none --profile minimal >/dev/null
+    fi
+    export PATH="$LIMEN_BUILD/cargo/bin:$PATH"
+    # Windows: rustup's default host is the msvc triple, whose host builds
+    # (build scripts, proc-macros, the tests) link through the runner image's
+    # Visual Studio, which nothing pins. The GNU triples link with the
+    # toolchain's own rust-mingw instead, so the pinned toolchain is the
+    # whole build. Read from rustup rather than from uname or the
+    # environment, which lie under emulation on arm64 (book/windows.md);
+    # idempotent, so a cached rustup from before this line is moved too.
+    case "$(rustup show 2>/dev/null | sed -n 's/^Default host: //p')" in
+        x86_64-pc-windows-msvc) rustup set default-host x86_64-pc-windows-gnu >/dev/null ;;
+        aarch64-pc-windows-msvc) rustup set default-host aarch64-pc-windows-gnullvm >/dev/null ;;
+    esac
+    # The gnullvm host's default linker is a MinGW clang it expects on PATH,
+    # and rustc does not fall back to its own: rust-lld is named, and links
+    # with rust-mingw's CRT (rustc's platform-support page, windows-gnullvm).
+    if [ "$(rustup show 2>/dev/null | sed -n 's/^Default host: //p')" = aarch64-pc-windows-gnullvm ]; then
+        export CARGO_TARGET_AARCH64_PC_WINDOWS_GNULLVM_LINKER=rust-lld
+    fi
+    # The toolchain rust-toolchain.toml names, installed explicitly when the
+    # file's toolchain is not there yet (a first run, a channel bump): the
+    # proxies would auto-install it under RUSTUP_AUTO_INSTALL, with a warning
+    # on every first lane, and a lane runs no step it did not state.
+    if ! RUSTUP_AUTO_INSTALL=0 rustup which cargo >/dev/null 2>&1; then
+        # --no-self-update: a pinned rustup asks nobody for a newer one.
+        rustup toolchain install --no-self-update
+    fi
+'''
+
+# Every Go-built tool the recipes run — the Go-source analyzers and the rest
+# alike — is a `tool` directive in a module under .limen/tools/, built natively ONCE
+# into .build/tools/ by the pinned go (book/tooling.md, "Go-built tools are
+# go.mod tools"). Never `go tool <name>` from a per-platform leg. Two homes:
+# .limen/tools/go.mod, shared by the small tools, and .limen/tools/<name>/go.mod for a tool
+# whose dependency graph must stay its upstream's exactly (golangci-lint:
+# minimal version selection across a shared module would lift its analyzers'
+# dependencies past what upstream tested). The isolated module wins when both
+# exist. A directive missing from both fails with the recipe that adds it.
+# Recipes depend on this with the tool's name and package, then call
+# .build/tools/<name>. A third argument names a file the recipe needs to run
+# at all (go.mod for a lane CI runs everywhere): without it the tool is not
+# built, so a repository with no Go module is not asked for the directive.
+_go-tool name pkg requires='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n '{{ requires }}' ] && [ ! -f '{{ requires }}' ]; then
+        exit 0
+    fi
+    pattern='^(tool[[:space:]]+)?[[:space:]]*{{ pkg }}([[:space:]]|$)'
+    if grep -qE "$pattern" '.limen/tools/{{ name }}/go.mod' 2>/dev/null; then
+        mkdir -p "$LIMEN_BUILD/tools" && GOOS='' GOARCH='' CGO_ENABLED=0 go -C '.limen/tools/{{ name }}' build -o "$LIMEN_BUILD/tools/" '{{ pkg }}'
+    elif grep -qE "$pattern" .limen/tools/go.mod 2>/dev/null; then
+        {{ go_tool_build }} '{{ pkg }}'
+    else
+        echo "neither .limen/tools/{{ name }}/go.mod nor .limen/tools/go.mod carries 'tool {{ pkg }}' — add it: just do tools add {{ pkg }} (see book/tooling.md)" >&2
+        exit 1
+    fi
+
+# The Go vulnerability database, fetched once into .build/vulndb by `limen
+# vulndb`, which retries (govulncheck's own client does not). Recipes depend
+# on this, then pass govulncheck `-db "$(cat .build/vulndb.url)"`.
+_vulndb:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "$LIMEN_BUILD"
+    ${LIMEN_BIN:-limen} vulndb "$LIMEN_BUILD/vulndb" > "$LIMEN_BUILD/vulndb.url"
+
+# The golangci-lint configuration the lint and fix recipes run: the baseline
+# limen-lint-go embeds with the project's .lint-go.yaml applied, rendered on
+# every run into .build/ (gitignored) — so an edit to the overlay is live at
+# the next `just do lint go`, and nothing at the root invites a hand edit
+# (book/linting-go.md, "one baseline, per-project carve-outs"). First the
+# floor: the baseline names linters, and a pinned golangci-lint older than the
+# release it is written for fails on a name it does not know; hence the
+# dependency on the golangci-lint build, whose binary it reads.
+# limen-lint-go ships in limen's release, on the hermetic PATH like limen;
+# LIMEN_LINT_GO_BIN is for the limen repository itself, which builds it from
+# its own tree (same idea as LIMEN_BIN in lint.just).
+_golangci-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ${LIMEN_LINT_GO_BIN:-limen-lint-go} check "$LIMEN_BUILD/tools/golangci-lint"
+    # One configuration per module: the baseline with that module's own
+    # .lint-go.yaml, so a command that is a module of its own carries its
+    # own carve-outs.
+    modules=(.); for d in cmd/*/; do [ -f "${d}go.mod" ] || continue; modules+=("${d%/}"); done
+    for module in "${modules[@]}"; do
+        ${LIMEN_LINT_GO_BIN:-limen-lint-go} -C "$module" render -o {{ golangci_config }}
+    done
