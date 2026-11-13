@@ -54,8 +54,8 @@ func TestTheReader(t *testing.T) {
 
 	session := login(t, modem)
 
-	if modem.Logouts() != 1 || modem.Logins() != 1 {
-		t.Fatalf("login: %d logouts before, %d logins", modem.Logouts(), modem.Logins())
+	if modem.Logouts() != 0 || modem.Logins() != 1 || modem.Refusals() != 0 {
+		t.Fatalf("login: %d logouts, %d logins, %d refusals", modem.Logouts(), modem.Logins(), modem.Refusals())
 	}
 
 	status, err := session.Status(t.Context())
@@ -148,12 +148,30 @@ func TestTheRefusals(t *testing.T) {
 
 	httpClient := client(t, modem)
 
+	// A wrong password is one attempt, not two: nothing is retried.
 	_, err := sb8200.Login(t.Context(), httpClient, modem.URL(), sb8200test.Username, "wrong")
-	if !errors.Is(err, sb8200.ErrRefused) {
-		t.Fatalf("wrong password: %v", err)
+	if !errors.Is(err, sb8200.ErrRefused) || modem.Refusals() != 1 {
+		t.Fatalf("wrong password: %v, %d refusals", err, modem.Refusals())
 	}
 
+	// After an idle spell the modem refuses a login from a client it has
+	// not just served its login page to. Login loads the page first, so
+	// the caller sees a login and the modem refuses nothing.
+	modem.Idle()
+
 	session := login(t, modem)
+
+	if modem.Refusals() != 1 || modem.Logins() != 1 {
+		t.Fatalf("after the idle: %d refusals, %d logins", modem.Refusals(), modem.Logins())
+	}
+
+	// Sessions do not exclude each other: a second login leaves the
+	// first one's token good.
+	second := login(t, modem)
+
+	if _, err = session.Info(t.Context()); err != nil {
+		t.Fatalf("the first session after a second login: %v", err)
+	}
 
 	modem.Lock()
 
@@ -162,10 +180,18 @@ func TestTheRefusals(t *testing.T) {
 		t.Fatalf("locked: %v", err)
 	}
 
-	// The lock is on logins; the page the login's logout ended is gone
-	// with it.
+	// The lock is on logins: a session already open still reads, until a
+	// logout ends it.
+	if _, err = session.Info(t.Context()); err != nil {
+		t.Fatalf("an open session under the lock: %v", err)
+	}
+
+	if err = second.Logout(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
 	if _, err = session.Info(t.Context()); !errors.Is(err, sb8200.ErrSessionLost) {
-		t.Fatalf("after another login's logout: %v", err)
+		t.Fatalf("after a logout: %v", err)
 	}
 
 	pinned, err := sb8200.HTTPClient(strings.Repeat("0", 64), false, timeout)
@@ -236,9 +262,13 @@ func TestThePasswordChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The next login's logout ends it.
-	again, err := sb8200.Login(t.Context(), httpClient, modem.URL(), sb8200test.Username, "Another1!")
+	// Another session's logout ends it.
+	other, err := sb8200.Login(t.Context(), httpClient, modem.URL(), sb8200test.Username, "Another1!")
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = other.Logout(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,10 +278,6 @@ func TestThePasswordChange(t *testing.T) {
 
 	if modem.CurrentPassword() != "Another1!" {
 		t.Fatalf("an ended session changed the password to %q", modem.CurrentPassword())
-	}
-
-	if err = again.Logout(t.Context()); err != nil {
-		t.Fatal(err)
 	}
 }
 
