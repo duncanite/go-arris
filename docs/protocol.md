@@ -8,7 +8,9 @@ log in differently; they are noted at the end, unseen.
 
 ## The server
 
-`micro_httpd`, HTTPS on port 443 with a self-signed certificate. Arris documents the page
+`micro_httpd`, HTTPS on port 443 with a self-signed certificate, TLS 1.2 with RSA key
+exchange only: it picks `TLS_RSA_WITH_AES_256_GCM_SHA384`, a suite Go's TLS no longer
+offers by default, so a Go client has to ask for it or the handshake fails. Arris documents the page
 at `192.168.100.1`; an operator's provisioning can put it elsewhere. Every answer is a
 `200`, the login page included: a refused login, a page asked without a session, and any
 path the modem does not know all come back as the login page, `<title>Login</title>`,

@@ -6,12 +6,9 @@ package cli
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -283,39 +280,15 @@ func (*passwordCommand) Run(ctx context.Context, root *rootCommand) error {
 	return nil
 }
 
-// Run connects without verifying and prints the leaf certificate's
-// fingerprint, for ARRIS_TLS_FINGERPRINT.
+// Run prints the fingerprint of the certificate the modem presents, for
+// ARRIS_TLS_FINGERPRINT.
 func (*fingerprintCommand) Run(ctx context.Context, root *rootCommand) error {
-	target, err := url.Parse(root.URL)
-	if err != nil || target.Host == "" {
-		return fmt.Errorf("%w: %q", sb8200.ErrURL, root.URL)
-	}
-
-	host := target.Host
-	if _, _, splitErr := net.SplitHostPort(host); splitErr != nil {
-		host = net.JoinHostPort(host, "443")
-	}
-
-	dialer := &tls.Dialer{
-		NetDialer: &net.Dialer{Timeout: requestTimeout},
-		Config: &tls.Config{
-			InsecureSkipVerify: true, // #nosec G402 -- reading the certificate is the point
-			MinVersion:         tls.VersionTLS12,
-		},
-	}
-
-	conn, err := dialer.DialContext(ctx, "tcp", host)
+	fingerprint, err := sb8200.PeerFingerprint(ctx, root.URL, requestTimeout)
 	if err != nil {
-		return fmt.Errorf("%s: %w", host, err)
-	}
-	defer func() { _ = conn.Close() }()
-
-	tlsConn, ok := conn.(*tls.Conn)
-	if !ok || len(tlsConn.ConnectionState().PeerCertificates) == 0 {
-		return fmt.Errorf("%w: %s presented no certificate", sb8200.ErrFingerprint, host)
+		return err
 	}
 
-	fmt.Fprintln(root.out, sb8200.Fingerprint(tlsConn.ConnectionState().PeerCertificates[0].Raw))
+	fmt.Fprintln(root.out, fingerprint)
 
 	return nil
 }

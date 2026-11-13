@@ -1,8 +1,10 @@
 package sb8200_test
 
 import (
+	"crypto/tls"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +228,40 @@ func TestThePasswordChange(t *testing.T) {
 
 	if err = again.Logout(t.Context()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestTheBetterServer: the modem's RSA suite is offered, and a server
+// that has better is not given it: against one on Go's default suites
+// the exchange is an ECDHE one.
+func TestTheBetterServer(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	server.TLS = &tls.Config{MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS12}
+	server.StartTLS()
+
+	defer server.Close()
+
+	httpClient, err := sb8200.HTTPClient("", true, timeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response, err := httpClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = response.Body.Close()
+
+	if suite := tls.CipherSuiteName(response.TLS.CipherSuite); !strings.HasPrefix(suite, "TLS_ECDHE_") {
+		t.Fatalf("a server on Go's defaults negotiated %s", suite)
 	}
 }
 
