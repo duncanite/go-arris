@@ -198,8 +198,15 @@ func TestThePasswordChange(t *testing.T) {
 		t.Fatalf("same password: %v", err)
 	}
 
+	logouts := modem.Logouts()
+
 	if err := session.ChangePassword(t.Context(), "Another1!"); err != nil {
 		t.Fatal(err)
+	}
+
+	// The page logs out after the change, and so does this.
+	if modem.Logouts() != logouts+1 {
+		t.Fatalf("logouts across the change: %d, want one", modem.Logouts()-logouts)
 	}
 
 	if modem.LoggedIn() || modem.CurrentPassword() != "Another1!" {
@@ -221,9 +228,25 @@ func TestThePasswordChange(t *testing.T) {
 		t.Fatalf("old password: %v", err)
 	}
 
+	// A change under a session the modem has ended gets the same answer
+	// and changes nothing: only a login tells.
+	stale, err := sb8200.Login(t.Context(), httpClient, modem.URL(), sb8200test.Username, "Another1!")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The next login's logout ends it.
 	again, err := sb8200.Login(t.Context(), httpClient, modem.URL(), sb8200test.Username, "Another1!")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if err = stale.ChangePassword(t.Context(), "Unheard1!"); err != nil {
+		t.Fatalf("a change under an ended session: %v", err)
+	}
+
+	if modem.CurrentPassword() != "Another1!" {
+		t.Fatalf("an ended session changed the password to %q", modem.CurrentPassword())
 	}
 
 	if err = again.Logout(t.Context()); err != nil {

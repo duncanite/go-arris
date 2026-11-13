@@ -75,7 +75,9 @@ against what the browser stored at login, never against the modem, then:
 
 1. `credential = base64(username + ":" + newPassword)`.
 2. `POST /changepwd_tab.html?<credential>`, no body, under the session cookie.
-3. Logs out. The modem answers nothing readable to the post; the next login is the proof.
+3. Logs out. The modem answered a change it took with a page titled `Login`, the page
+   that elsewhere means the session is gone, so the answer cannot be relied on and the
+   next login is the proof. What it answers to a change it does not take was not seen.
 
 The rule the script enforces, and the modem does not: 8 to 20 characters, at least one
 lower-case letter, one upper-case letter, one digit and one character that is none of

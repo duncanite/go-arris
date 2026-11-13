@@ -142,3 +142,23 @@ func TestThePasswordCommand(t *testing.T) {
 		)
 	}
 }
+
+// TestThePasswordNotTaken: the modem answers the change as it answers one
+// it takes and keeps its password; the login that proves it fails, and
+// the command says so.
+func TestThePasswordNotTaken(t *testing.T) {
+	modem := sb8200test.New()
+	defer modem.Close()
+
+	modem.KeepPassword()
+
+	t.Setenv("ARRIS_PASSWORD", sb8200test.Password)
+	t.Setenv("ARRIS_NEW_PASSWORD", "Another1!")
+
+	out, status := run(t, modem, "password")
+	if status != cli.ExitError ||
+		!strings.Contains(out, "a login with the new password failed; try both passwords") ||
+		strings.Contains(out, "Password changed") {
+		t.Fatalf("password: %d\n%s", status, out)
+	}
+}
