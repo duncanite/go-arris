@@ -22,6 +22,8 @@ import (
 
 // The pages, by the names the modem's menu gives them.
 const (
+	// pageLogin is the root, where the modem serves its login page.
+	pageLogin  = "/"
 	pageStatus = "cmconnectionstatus.html"
 	pageInfo   = "cmswinfo.html"
 	pageLog    = "cmeventlog.html"
@@ -50,13 +52,14 @@ const (
 // The errors a Session hands back, to test with errors.Is.
 var (
 	// ErrRefused: the modem answered a login with its login page; the
-	// credentials are wrong, or a session is still open elsewhere.
+	// credentials are wrong.
 	ErrRefused = errors.New("the modem refused the login")
-	// ErrLocked: too many refused logins; the modem locks its page for
-	// five minutes.
+	// ErrLocked: a login was refused while the modem's lock flag said
+	// Locked. The page's own message for that flag speaks of invalid
+	// login attempts and five minutes; neither was measured.
 	ErrLocked = errors.New("the modem has locked its page after invalid logins")
 	// ErrSessionLost: a page came back as the login page; the modem
-	// ended the session, which it does after a while idle.
+	// ended the session, or a logout did.
 	ErrSessionLost = errors.New("the modem ended the session")
 	// ErrPage: a page is not in the shape this package knows, the
 	// firmware having moved its tables.
@@ -83,10 +86,14 @@ type Session struct {
 }
 
 // Login logs in to the modem at baseURL, the scheme and host of its page,
-// and returns the session. It logs out first, as the page does: a
-// session left open makes the modem refuse the next login. ErrRefused
-// is the modem's answer to wrong credentials, ErrLocked its answer after
-// too many of them.
+// and returns the session. It loads the login page first, as a browser
+// does: after the modem had sat idle it was seen to refuse a login sent
+// with nothing before it, right credentials and all, with the answer a
+// wrong password gets, and to take one sent after a load of that page.
+// ErrRefused is the modem's answer
+// to wrong credentials, ErrLocked its answer when its lock flag says so.
+// Sessions do not exclude each other: a login neither needs nor ends
+// another.
 func Login(ctx context.Context, client *http.Client, baseURL, username, password string) (*Session, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil || base.Host == "" {
@@ -95,11 +102,11 @@ func Login(ctx context.Context, client *http.Client, baseURL, username, password
 
 	session := &Session{client: client, base: base, username: username, password: password}
 
-	if _, err = session.get(ctx, pageLogout, "", false); err != nil {
+	credential := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+
+	if _, err = session.get(ctx, pageLogin, "", false); err != nil {
 		return nil, err
 	}
-
-	credential := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 
 	body, err := session.get(ctx, pageStatus, credential, true)
 	if err != nil {

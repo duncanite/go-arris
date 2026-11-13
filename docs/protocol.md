@@ -32,14 +32,39 @@ The login page's script (`validate()` on `/`) does this:
    it as the `credential` cookie.
 4. Every page after that is a plain `GET` with `Cookie: credential=<token>`.
 
-A wrong password gets the login page back, `200`. After repeated wrong passwords the modem
-locks the page for five minutes; `GET /LoginLock.txt` says `Locked` or `NotLocked`, and
-the login page reads it to word its message.
+A wrong password gets the login page back, `200`. `GET /LoginLock.txt` says `Locked` or
+`NotLocked`, and the login page reads it to word its message: when it says `Locked`, the
+page prints that access has timed out due to invalid login attempts and to try again
+after five minutes. That wording is the only source here for what the lock is and how
+long it lasts; neither was measured.
 
-`GET /logout.html` ends the session; the page's own logout does it before leaving, and
-readers do it before logging in, since a session left open from before can make the next
-login fail. The modem is reported to end an idle session on its own after some minutes;
-how long was not measured.
+`GET /logout.html` ends the session; the page's own logout does it before leaving. Which
+sessions a logout without a cookie ends was not seen.
+
+Sessions do not exclude each other. Seen against the modem: a login right after a login,
+with no logout between, gets its own token, and the earlier token still reads pages.
+
+After the modem has sat idle, a login sent with nothing before it is refused whatever
+the credentials, and the same login asked again at once is taken. Seen twice, after
+fifteen and after ten minutes idle, each with only a read of `LoginLock.txt` sent before
+the login, so that read does not count; the shortest idle that does it was not measured.
+The refusal is the login page with a `200`, the same answer as a wrong password, and
+`LoginLock.txt` stays `NotLocked` through it. A login sent after fifteen minutes idle
+with a `GET /` before it, the login page as a browser loads it, was taken at once.
+
+Those three things were seen: the cold login refused, twice; the same login asked again
+taken, twice; the login after `GET /` taken, once. The reading of them is that the modem
+takes a login only from a client it has recently served its login page to, and that a
+refusal, being that page, is what lets the next attempt through. That reading was not
+isolated: which client, how recently, and whether the refusal's page or the page served
+for another path counts were not tested. A client loads `/` before it logs in, which
+rests on the one thing seen.
+
+`LoginLock.txt` was read as `Locked` twice, thirteen minutes apart, on an evening when
+no wrong password is known to have been sent, and as `NotLocked` two minutes after the
+second reading, following a login through the page. Nothing was read between the two,
+so whether it stayed `Locked` or was set twice is not known; what sets it and what
+clears it is not established.
 
 The credential is in the query string of the login request, so it is in whatever logs
 the path: the modem's, a proxy's, a shell history if typed. That is the page's design,

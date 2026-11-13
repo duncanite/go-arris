@@ -5,7 +5,8 @@
 // Basic authorization header, a token in answer, the token expected
 // back as the "credential" cookie; the login page, with a 200, for a
 // refused login, a page asked without the cookie, and any path the
-// modem does not know. Its TLS is the modem's: 1.2, RSA key exchange
+// modem does not know. Sessions do not exclude each other, as the
+// modem's do not: a login leaves the earlier tokens good. Its TLS is the modem's: 1.2, RSA key exchange
 // only, which a client on Go's default cipher suites cannot join. A password change is a POST of the new
 // credential as the query string, which also ends the session.
 package sb8200test
@@ -49,7 +50,9 @@ type Modem struct {
 	mu           sync.Mutex
 	pages        map[string]string
 	password     string
-	token        string
+	tokens       map[string]struct{}
+	primed       bool
+	refusals     int
 	locked       bool
 	drop         bool
 	keepPassword bool
@@ -59,7 +62,7 @@ type Modem struct {
 
 // New starts a modem with the default credentials.
 func New() *Modem {
-	modem := &Modem{password: Password, pages: map[string]string{}}
+	modem := &Modem{password: Password, pages: map[string]string{}, tokens: map[string]struct{}{}}
 	modem.server = httptest.NewUnstartedServer(http.HandlerFunc(modem.serve))
 	modem.server.TLS = &tls.Config{
 		MinVersion:   tls.VersionTLS12,
@@ -102,6 +105,28 @@ func (m *Modem) Drop() {
 	m.drop = true
 }
 
+// Idle makes the modem forget it has served its login page: until it
+// serves the page again it refuses every login. A new modem starts that
+// way. Seen on the modem after it had sat idle: a login with nothing
+// before it refused, and one after a load of the root taken. That a
+// refusal's page, or the page served for any other path, counts as well
+// was not seen; the test modem takes it to, since a refused login asked
+// again was taken.
+func (m *Modem) Idle() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.primed = false
+}
+
+// Refusals counts the logins refused.
+func (m *Modem) Refusals() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.refusals
+}
+
 // Lock makes the modem answer every login with its login page and
 // report itself locked, as it does after too many invalid logins.
 func (m *Modem) Lock() {
@@ -133,7 +158,7 @@ func (m *Modem) LoggedIn() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.token != ""
+	return len(m.tokens) > 0
 }
 
 // Logins counts the logins accepted.
@@ -164,7 +189,9 @@ func (m *Modem) serve(writer http.ResponseWriter, request *http.Request) {
 	case m.drop && credential:
 		hangUp(writer)
 	case name == logoutPage:
-		m.token = ""
+		// Every session ends: which of them a logout ends on the modem
+		// was not seen.
+		clear(m.tokens)
 		m.logouts++
 	case name == lockFile:
 		m.write(writer, m.lockFlag())
@@ -191,7 +218,10 @@ func (m *Modem) login(writer http.ResponseWriter, request *http.Request) {
 	credential := request.URL.RawQuery
 	expected := base64.StdEncoding.EncodeToString([]byte(Username + ":" + m.password))
 
-	if m.locked || credential != expected || request.Header.Get("Authorization") != "Basic "+credential {
+	wrong := credential != expected || request.Header.Get("Authorization") != "Basic "+credential
+
+	if m.locked || !m.primed || wrong {
+		m.refusals++
 		m.loginPage(writer)
 
 		return
@@ -199,10 +229,11 @@ func (m *Modem) login(writer http.ResponseWriter, request *http.Request) {
 
 	raw := make([]byte, tokenLength)
 	_, _ = rand.Read(raw)
-	m.token = hex.EncodeToString(raw)[:tokenLength]
+	token := hex.EncodeToString(raw)[:tokenLength]
+	m.tokens[token] = struct{}{}
 	m.logins++
 
-	m.write(writer, m.token)
+	m.write(writer, token)
 }
 
 // changePassword takes the new credential as the query string under the
@@ -229,7 +260,9 @@ func (m *Modem) changePassword(writer http.ResponseWriter, request *http.Request
 		m.password = password
 	}
 
-	m.token = ""
+	if cookie, err := request.Cookie(cookieName); err == nil {
+		delete(m.tokens, cookie.Value)
+	}
 
 	// The modem was seen to answer a change it took with its login page.
 	m.loginPage(writer)
@@ -266,10 +299,14 @@ func (m *Modem) authenticated(request *http.Request) bool {
 		return false
 	}
 
-	return m.token != "" && cookie.Value == m.token
+	_, known := m.tokens[cookie.Value]
+
+	return known
 }
 
 func (m *Modem) loginPage(writer http.ResponseWriter) {
+	m.primed = true
+
 	body, _ := pages.ReadFile(loginPage)
 	m.write(writer, string(body))
 }

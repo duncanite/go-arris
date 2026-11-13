@@ -42,9 +42,16 @@ reads, and it changes the password; the modem offers nothing else to change.
 - **Times in UTC, meaning the modem's clock.** The page prints no zone. Guessing the
   host's would be a guess; the values are the modem's wall clock, in UTC for want of
   anything better, and say so.
-- **One login per run, a logout after.** The modem keeps a session open and can refuse
-  the next login while it does; the command logs out whatever happened, and `Login`
-  logs out first, as the page does.
+- **One login per run, a logout after.** The command logs out whatever happened, so no
+  session is left on the modem. `Login` sends no logout first: the modem's sessions do
+  not exclude each other, and a logout could end someone else's.
+- **The login page is loaded before the login.** After an idle spell the modem refuses a
+  login from a client it has not just served its login page to, with nothing in the
+  answer to tell that refusal from a wrong password. `Login` loads the page first, as a
+  browser does, so a correct login is taken the first time and a wrong password stays
+  one attempt. Asking a refused login again would also get through, at the price of a
+  second attempt on every wrong password and on every login sent while the modem is
+  locked; it was not chosen.
 - **Passwords from the environment only.** `ARRIS_PASSWORD` and `ARRIS_NEW_PASSWORD`,
   never arguments: an argument is in the process list and the shell history. The page's
   protocol then puts the credential in a query string, which is the page's design and
