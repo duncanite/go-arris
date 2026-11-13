@@ -1,0 +1,31 @@
+# This project's carve-outs from the Go lint baseline (.limen/lint-go.yaml):
+# the baseline's sections, in its shape, holding only what this project adds,
+# changes or takes out. `just do lint go` renders the two on every run
+# (book/linting-go.md, "one baseline, per-project carve-outs").
+
+golangci:
+  linters:
+    settings:
+      depguard:
+        rules:
+          main:
+            # What arris is built on: the house application toolkit for
+            # the command's process, the CLI framework, and the HTML
+            # parser the pages need, since the standard library has none.
+            # Everything else stays the baseline's $gostd.
+            allow:
+              - github.com/mycophonic/primordium
+              - github.com/alecthomas/kong
+              - golang.org/x/net/html
+      wrapcheck:
+        # The module's own packages wrap every error with its context at
+        # the call that failed; the command re-wrapping each one would
+        # say the same thing twice.
+        ignore-package-globs:
+          - github.com/duncanite/go-arris/*
+
+commands:
+  unshipped:
+    # Built and run from the tree while the pages are proven against the
+    # modem; no release ships it yet.
+    - ./cmd/arris
