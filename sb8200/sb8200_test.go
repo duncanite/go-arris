@@ -2,6 +2,7 @@ package sb8200_test
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -411,5 +412,35 @@ func TestThePageShapes(t *testing.T) {
 		sb8200.ErrURL,
 	) {
 		t.Fatalf("no host: %v", err)
+	}
+}
+
+// TestTheCredentialStaysOut: a login or a password change the modem
+// drops fails with an error that holds no credential. Both carry it in
+// the query, and the HTTP client's own error quotes the URL.
+func TestTheCredentialStaysOut(t *testing.T) {
+	t.Parallel()
+
+	modem := sb8200test.New()
+	defer modem.Close()
+
+	session := login(t, modem)
+
+	modem.Drop()
+
+	leaks := func(err error, password string) bool {
+		credential := base64.StdEncoding.EncodeToString([]byte(sb8200test.Username + ":" + password))
+
+		return strings.Contains(err.Error(), credential) || strings.Contains(err.Error(), "?")
+	}
+
+	err := session.ChangePassword(t.Context(), "Another1!")
+	if err == nil || leaks(err, "Another1!") || !strings.Contains(err.Error(), "/changepwd_tab.html") {
+		t.Fatalf("a dropped change: %v", err)
+	}
+
+	_, err = sb8200.Login(t.Context(), client(t, modem), modem.URL(), sb8200test.Username, sb8200test.Password)
+	if err == nil || leaks(err, sb8200test.Password) || !strings.Contains(err.Error(), "/cmconnectionstatus.html") {
+		t.Fatalf("a dropped login: %v", err)
 	}
 }

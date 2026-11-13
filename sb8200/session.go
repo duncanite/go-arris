@@ -284,6 +284,12 @@ func (s *Session) get(ctx context.Context, name, query string, authorize bool) (
 func (s *Session) do(request *http.Request) (string, error) {
 	response, err := s.client.Do(request)
 	if err != nil {
+		// The client's error carries the request's URL, and a login's or a
+		// password change's query is the credential: only the cause goes on.
+		if failed, ok := errors.AsType[*url.Error](err); ok {
+			err = failed.Err
+		}
+
 		return "", fmt.Errorf("%s: %w", request.URL.Path, err)
 	}
 	defer func() { _ = response.Body.Close() }()
